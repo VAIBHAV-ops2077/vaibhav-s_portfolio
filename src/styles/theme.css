@@ -1,7 +1,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --font-size: 16px;
+  --font-size: 18px;
   --background: #d4c5a0;
   --foreground: #2c1810;
   --card: #faf6f0;
@@ -126,6 +126,8 @@
 
   body {
     @apply bg-background text-foreground;
+    font-size: 1.125rem;
+    line-height: 1.6;
   }
 
   /**
@@ -135,6 +137,19 @@
 
   html {
     font-size: var(--font-size);
+  }
+
+  p,
+  li,
+  span,
+  div,
+  label,
+  button,
+  input,
+  textarea,
+  select,
+  a {
+    font-size: inherit;
   }
 
   h1 {

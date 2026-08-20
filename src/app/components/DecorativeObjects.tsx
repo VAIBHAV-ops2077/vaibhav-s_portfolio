@@ -98,7 +98,14 @@ const CONFIGS: ObjCfg[] = [
   },
 ];
 
-const EDGE = "clamp(20px, 2.5vw, 42px)";
+const EDGE_TOP = "clamp(0px, 0.8vw, 12px)";
+const EDGE_RIGHT = "clamp(20px, 2.8vw, 52px)";
+const EDGE_LEFT = "clamp(16px, 2.4vw, 42px)";
+const EDGE_BOTTOM = "clamp(-10px, 0.4vw, 18px)";
+const HORSE_RIGHT = "-10px";
+const GLOBE_RIGHT = "-6px";
+const COMPASS_LEFT = "-6px";
+const HEPHAESTUS_LEFT = "-8px";
 
 function cornerCSS(c: Corner): CSSProperties {
   const base: CSSProperties = {
@@ -106,10 +113,10 @@ function cornerCSS(c: Corner): CSSProperties {
     zIndex: 20,
     pointerEvents: "none",
   };
-  if (c === "tl") return { ...base, top: EDGE, left: EDGE };
-  if (c === "tr") return { ...base, top: EDGE, right: EDGE };
-  if (c === "bl") return { ...base, bottom: EDGE, left: EDGE };
-  /* br */        return { ...base, bottom: EDGE, right: EDGE };
+  if (c === "tl") return { ...base, top: EDGE_TOP, left: COMPASS_LEFT };
+  if (c === "tr") return { ...base, top: EDGE_TOP, right: GLOBE_RIGHT };
+  if (c === "bl") return { ...base, bottom: EDGE_BOTTOM, left: HEPHAESTUS_LEFT };
+  /* br */        return { ...base, bottom: EDGE_BOTTOM, right: HORSE_RIGHT };
 }
 
 // ─── Single decorative artifact ────────────────────────────────────────────────
