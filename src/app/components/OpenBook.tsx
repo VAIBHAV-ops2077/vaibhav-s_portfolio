@@ -169,7 +169,14 @@ export function OpenBook({ onClose }: Props) {
           <button
             onClick={onClose}
             className="absolute -top-10 right-0 flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity"
-            style={{ fontFamily: "Lato, sans-serif", fontSize: 12, color: "#2c1810" }}
+            style={{
+              fontFamily: "Lato, sans-serif",
+              fontSize: 12,
+              color: "#2c1810",
+              border: "1px solid rgba(44,24,16,0.22)",
+              borderRadius: 3,
+              padding: "4px 8px",
+            }}
           >
             <X size={14} /> Close
           </button>
@@ -215,7 +222,13 @@ export function OpenBook({ onClose }: Props) {
               onClick={mobileNext}
               disabled={mobilePage >= mobilePageCount - 1}
               className="flex items-center gap-1 text-sm disabled:opacity-30 hover:opacity-70 transition-opacity"
-              style={{ fontFamily: "Lato, sans-serif", color: "#2c1810" }}
+              style={{
+                fontFamily: "Lato, sans-serif",
+                color: "#2c1810",
+                border: "1px solid rgba(44,24,16,0.22)",
+                borderRadius: 3,
+                padding: "4px 8px",
+              }}
             >
               Next <ChevronRight size={16} />
             </button>
@@ -258,6 +271,9 @@ export function OpenBook({ onClose }: Props) {
             fontSize: 12,
             color: "#2c1810",
             letterSpacing: "0.06em",
+            border: "1px solid rgba(44,24,16,0.22)",
+            borderRadius: 3,
+            padding: "4px 8px",
           }}
         >
           <X size={14} />
@@ -269,8 +285,8 @@ export function OpenBook({ onClose }: Props) {
       <div
         className="relative"
         style={{
-          width: "min(92vw, 1080px)",
-          height: "min(72vh, 600px)",
+          width: "min(96vw, 1220px)",
+          height: "min(78vh, 700px)",
           perspective: 2000,
           perspectiveOrigin: "50% 50%",
         }}
@@ -291,6 +307,10 @@ export function OpenBook({ onClose }: Props) {
         {/* ── Base LEFT page ── */}
         <div
           className="absolute top-0 bottom-0 left-0 overflow-hidden"
+          onClick={(event) => {
+            if (event.target instanceof Element && event.target.closest("a")) return;
+            flipBackward();
+          }}
           style={{
             width: "50%",
             background: "#faf6f0",
@@ -335,6 +355,10 @@ export function OpenBook({ onClose }: Props) {
         {/* ── Base RIGHT page ── */}
         <div
           className="absolute top-0 bottom-0 right-0 overflow-hidden"
+          onClick={(event) => {
+            if (event.target instanceof Element && event.target.closest("a")) return;
+            flipForward();
+          }}
           style={{
             width: "50%",
             background: "#f5f1e8",
@@ -476,14 +500,14 @@ export function OpenBook({ onClose }: Props) {
             {spreadIndex > 0 && (
               <div
                 className="absolute left-0 top-0 bottom-0 cursor-w-resize"
-                style={{ width: "22%", zIndex: 5 }}
+                style={{ width: "5%", zIndex: 5 }}
                 onClick={flipBackward}
               />
             )}
             {spreadIndex < TOTAL_SPREADS - 1 && (
               <div
                 className="absolute right-0 top-0 bottom-0 cursor-e-resize"
-                style={{ width: "22%", zIndex: 5 }}
+                style={{ width: "5%", zIndex: 5 }}
                 onClick={flipForward}
               />
             )}
@@ -589,7 +613,15 @@ export function OpenBook({ onClose }: Props) {
           onClick={flipForward}
           disabled={spreadIndex >= TOTAL_SPREADS - 1 || isFlipping}
           className="flex items-center gap-2 disabled:opacity-25 hover:opacity-70 transition-opacity"
-          style={{ fontFamily: "Lato, sans-serif", fontSize: 12, color: "#2c1810", letterSpacing: "0.06em" }}
+          style={{
+            fontFamily: "Lato, sans-serif",
+            fontSize: 12,
+            color: "#2c1810",
+            letterSpacing: "0.06em",
+            border: "1px solid rgba(44,24,16,0.22)",
+            borderRadius: 3,
+            padding: "4px 8px",
+          }}
         >
           Next
           <ChevronRight size={16} />
