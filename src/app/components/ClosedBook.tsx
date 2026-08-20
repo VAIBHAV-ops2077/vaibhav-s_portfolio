@@ -3,15 +3,18 @@ import { motion } from "motion/react";
 
 interface Props {
   onOpen: () => void;
+  /** Fires immediately when the user clicks to open — before the 900 ms delay. */
+  onOpening?: () => void;
 }
 
-export function ClosedBook({ onOpen }: Props) {
+export function ClosedBook({ onOpen, onOpening }: Props) {
   const [isHovered, setIsHovered] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
 
   const handleClick = () => {
     if (isOpening) return;
     setIsOpening(true);
+    onOpening?.();        // fires immediately — triggers corner-image entrance
     setTimeout(onOpen, 900);
   };
 

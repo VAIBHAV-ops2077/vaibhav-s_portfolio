@@ -12,6 +12,14 @@
  *  - Hover: scale lerp, amplified cursor response while hovered.
  *  - Shadows: CSS `filter: drop-shadow` on <img> + animated contact-shadow div.
  *
+ * Book-phase animation:
+ *  - `phase` prop drives entrance/exit via CSS transition on the outer wrapper.
+ *  - "closed"  → completely off-screen + visibility:hidden (no flicker on load).
+ *  - "opening" → slides in diagonally from respective corner with stagger.
+ *  - "open"    → settled at final corner position.
+ *  - "closing" → slides back out to respective corner.
+ *  - The inner rAF wrapper is unaffected by the phase transition.
+ *
  * Layering:
  *  Objects render at z-index 20, above the book layer (z-index 10) in App.tsx.
  */
@@ -37,6 +45,9 @@ if (typeof window !== "undefined") {
   );
 }
 
+// ─── Phase type ────────────────────────────────────────────────────────────────
+export type BookPhase = "closed" | "opening" | "open" | "closing";
+
 // ─── Configuration ─────────────────────────────────────────────────────────────
 type Corner = "tl" | "tr" | "bl" | "br";
 
@@ -57,6 +68,12 @@ interface ObjCfg {
   cursorDamp: number;
   hoverScale: number;
   scaleDamp: number;
+  /** Entrance stagger delay in ms from when phase becomes "opening". */
+  entranceDelayMs: number;
+  /** Starting rotation offset for entrance (degrees). Positive = CW. */
+  entranceRotDeg: number;
+  /** Off-screen translate offset as [x, y] pixel strings. */
+  hiddenTranslate: [string, string];
 }
 
 const CONFIGS: ObjCfg[] = [
@@ -68,6 +85,9 @@ const CONFIGS: ObjCfg[] = [
     spinMs: 0,
     cursorRot: 7, cursorPx: 12, cursorDamp: 0.045,
     hoverScale: 1.06, scaleDamp: 0.07,
+    entranceDelayMs: 0,
+    entranceRotDeg: -4,
+    hiddenTranslate: ["-160px", "-140px"],
   },
   {
     id: "globe", src: globeSrc, corner: "tr",
@@ -77,6 +97,9 @@ const CONFIGS: ObjCfg[] = [
     spinMs: 0,
     cursorRot: 4, cursorPx: 8, cursorDamp: 0.038,
     hoverScale: 1.06, scaleDamp: 0.06,
+    entranceDelayMs: 120,
+    entranceRotDeg: 4,
+    hiddenTranslate: ["160px", "-140px"],
   },
   {
     id: "hephaestus", src: hephaestusSrc, corner: "bl",
@@ -86,6 +109,9 @@ const CONFIGS: ObjCfg[] = [
     spinMs: 0,
     cursorRot: 3, cursorPx: 6, cursorDamp: 0.028,
     hoverScale: 1.06, scaleDamp: 0.05,
+    entranceDelayMs: 200,
+    entranceRotDeg: 3,
+    hiddenTranslate: ["-160px", "140px"],
   },
   {
     id: "horse", src: horseSrc, corner: "br",
@@ -95,6 +121,9 @@ const CONFIGS: ObjCfg[] = [
     spinMs: 0,
     cursorRot: 5, cursorPx: 9, cursorDamp: 0.040,
     hoverScale: 1.06, scaleDamp: 0.065,
+    entranceDelayMs: 310,
+    entranceRotDeg: -3,
+    hiddenTranslate: ["160px", "140px"],
   },
 ];
 
@@ -119,11 +148,88 @@ function cornerCSS(c: Corner): CSSProperties {
   /* br */        return { ...base, bottom: EDGE_BOTTOM, right: HORSE_RIGHT };
 }
 
+// ─── Entrance/exit transform helpers ──────────────────────────────────────────
+
+function phaseTransform(isVisible: boolean, cfg: ObjCfg): string {
+  if (isVisible) {
+    return "translate(0px, 0px) scale(1) rotate(0deg)";
+  }
+  const [tx, ty] = cfg.hiddenTranslate;
+  // Scale starts slightly smaller (0.90) for a subtle grow-in on entrance
+  return `translate(${tx}, ${ty}) scale(0.90) rotate(${cfg.entranceRotDeg}deg)`;
+}
+
 // ─── Single decorative artifact ────────────────────────────────────────────────
-function Artifact({ cfg }: { cfg: ObjCfg }) {
+function Artifact({ cfg, phase }: { cfg: ObjCfg; phase: BookPhase }) {
   const innerRef = useRef<HTMLDivElement>(null);
   const shadowRef = useRef<HTMLDivElement>(null);
+  const outerRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>(0);
+  const visibilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isVisible = phase === "opening" || phase === "open";
+
+  // Initialize to hidden state without any transition on mount.
+  // Two rAF frames guarantee the browser has painted the hidden state
+  // before we re-enable transitions, preventing any first-frame flash.
+  useEffect(() => {
+    const el = outerRef.current;
+    if (!el) return;
+    el.style.transition = "none";
+    el.style.transform = phaseTransform(false, cfg);
+    el.style.opacity = "0";
+    el.style.visibility = "hidden";
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        // Two frames in: safe to re-enable transitions.
+        if (el) el.style.transition = "";
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount only.
+
+  // Drive entrance/exit whenever phase changes.
+  useEffect(() => {
+    const el = outerRef.current;
+    if (!el) return;
+
+    // Cancel any pending hide-visibility timer.
+    if (visibilityTimerRef.current !== null) {
+      clearTimeout(visibilityTimerRef.current);
+      visibilityTimerRef.current = null;
+    }
+
+    if (isVisible) {
+      // Immediately visible so the slide-in is seen from the first frame.
+      el.style.visibility = "visible";
+
+      const d = cfg.entranceDelayMs;
+      // Transform: spring-like ease with micro-overshoot — arrives first.
+      // Opacity: eases in slightly behind the position for a natural feel.
+      el.style.transition = [
+        `transform 1000ms cubic-bezier(0.34, 1.12, 0.64, 1) ${d}ms`,
+        `opacity   800ms cubic-bezier(0.22, 1, 0.36, 1)    ${d + 60}ms`,
+      ].join(", ");
+
+      el.style.opacity = "1";
+      el.style.transform = phaseTransform(true, cfg);
+    } else {
+      // Exit: ease-in acceleration — images leave with growing momentum.
+      el.style.transition = [
+        "transform 650ms cubic-bezier(0.55, 0, 0.85, 0.10) 0ms",
+        "opacity   500ms cubic-bezier(0.55, 0, 1, 0.45)    0ms",
+      ].join(", ");
+
+      el.style.opacity = "0";
+      el.style.transform = phaseTransform(false, cfg);
+
+      // After the longest exit transition + small buffer, kill visibility.
+      visibilityTimerRef.current = setTimeout(() => {
+        if (outerRef.current) outerRef.current.style.visibility = "hidden";
+        visibilityTimerRef.current = null;
+      }, 680);
+    }
+  }, [isVisible, cfg]);
 
   const live = useRef({
     rotX: 0,
@@ -197,7 +303,15 @@ function Artifact({ cfg }: { cfg: ObjCfg }) {
   }, [cfg]);
 
   return (
-    <div style={cornerCSS(cfg.corner)}>
+    // Outer wrapper: phase-driven entrance/exit via CSS transition on transform.
+    // Initial state is set imperatively in useEffect to avoid flash on load.
+    <div
+      ref={outerRef}
+      style={{
+        ...cornerCSS(cfg.corner),
+        willChange: "transform, opacity",
+      }}
+    >
       <div
         style={{
           position: "relative",
@@ -208,6 +322,7 @@ function Artifact({ cfg }: { cfg: ObjCfg }) {
         onMouseLeave={() => { live.current.hovered = false; }}
         onClick={() => { live.current.clickedAt = performance.now(); }}
       >
+        {/* Inner wrapper: rAF float + parallax + hover scale (unchanged) */}
         <div ref={innerRef} style={{ position: "relative", willChange: "transform" }}>
           <img
             src={cfg.src}
@@ -248,11 +363,11 @@ function Artifact({ cfg }: { cfg: ObjCfg }) {
 }
 
 // ─── Public export ─────────────────────────────────────────────────────────────
-export function DecorativeObjects() {
+export function DecorativeObjects({ phase }: { phase: BookPhase }) {
   return (
     <>
       {CONFIGS.map((cfg) => (
-        <Artifact key={cfg.id} cfg={cfg} />
+        <Artifact key={cfg.id} cfg={cfg} phase={phase} />
       ))}
     </>
   );

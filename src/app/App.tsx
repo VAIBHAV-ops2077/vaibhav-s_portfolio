@@ -1,14 +1,36 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ClosedBook } from "./components/ClosedBook";
 import { OpenBook } from "./components/OpenBook";
 import { DecorativeObjects } from "./components/DecorativeObjects";
+import type { BookPhase } from "./components/DecorativeObjects";
 import backgroundImg from "../assets/background.png";
 
-type BookStage = "closed" | "open";
-
 export default function App() {
-  const [stage, setStage] = useState<BookStage>("closed");
+  const [phase, setPhase] = useState<BookPhase>("closed");
+
+  // Derive the book stage that controls which component is rendered.
+  const stage = phase === "open" || phase === "closing" ? "open" : "closed";
+
+  /** Fires immediately when user clicks the book — triggers corner-image entrance. */
+  const handleOpening = useCallback(() => {
+    setPhase("opening");
+  }, []);
+
+  /** Fires after 900 ms — book has finished its opening animation. */
+  const handleOpen = useCallback(() => {
+    setPhase("open");
+  }, []);
+
+  /** Fires when the user requests to close the book. */
+  const handleClose = useCallback(() => {
+    // 1. Kick off corner-image exit immediately.
+    setPhase("closing");
+    // 2. After the images have exited (~500 ms) + small buffer, switch to closed.
+    setTimeout(() => {
+      setPhase("closed");
+    }, 600);
+  }, []);
 
   return (
     <div
@@ -30,8 +52,8 @@ export default function App() {
         }}
       />
 
-      {/* Decorative corner artifacts — z-index 3, behind book (z-index 10) */}
-      <DecorativeObjects />
+      {/* Decorative corner artifacts — phase-driven entrance/exit */}
+      <DecorativeObjects phase={phase} />
 
       {/*
         Book layer — wrapped in a positioned div at z-index 10 so it always
@@ -50,7 +72,7 @@ export default function App() {
                 transition: { duration: 0.45, ease: [0.4, 0, 1, 1] },
               }}
             >
-              <ClosedBook onOpen={() => setStage("open")} />
+              <ClosedBook onOpening={handleOpening} onOpen={handleOpen} />
             </motion.div>
           ) : (
             <motion.div
@@ -64,7 +86,7 @@ export default function App() {
                 transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
               }}
             >
-              <OpenBook onClose={() => setStage("closed")} />
+              <OpenBook onClose={handleClose} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -72,3 +94,4 @@ export default function App() {
     </div>
   );
 }
+
