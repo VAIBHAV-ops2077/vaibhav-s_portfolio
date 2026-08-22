@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ClosedBook } from "./components/ClosedBook";
 import { OpenBook } from "./components/OpenBook";
@@ -11,6 +11,15 @@ export default function App() {
 
   // Derive the book stage that controls which component is rendered.
   const stage = phase === "open" || phase === "closing" ? "open" : "closed";
+
+  // Prevent any native browser document scroll or rubber-band overscroll anywhere in the application
+  useEffect(() => {
+    const handleGlobalWheel = (e: WheelEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("wheel", handleGlobalWheel, { passive: false });
+    return () => window.removeEventListener("wheel", handleGlobalWheel);
+  }, []);
 
   /** Fires immediately when user clicks the book — triggers corner-image entrance. */
   const handleOpening = useCallback(() => {
@@ -34,8 +43,18 @@ export default function App() {
 
   return (
     <div
-      className="relative w-full h-screen overflow-hidden select-none"
+      className="fixed inset-0 w-full h-full overflow-hidden select-none"
       style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: "100vw",
+        height: "100dvh",
+        overflow: "hidden",
+        overscrollBehavior: "none",
+        backgroundColor: "#0d1627",
         backgroundImage: `url(${backgroundImg})`,
         backgroundSize: "cover",
         backgroundPosition: "center",

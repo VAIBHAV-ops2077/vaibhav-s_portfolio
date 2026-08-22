@@ -174,13 +174,16 @@ export function Annotation({ children, color = gold, rotate = -1 }: { children: 
 export function PageNumber({ n, side }: { n: number | string; side: "left" | "right" }) {
   return (
     <div
-      className="absolute bottom-5"
+      className="absolute pointer-events-none select-none"
       style={{
-        [side === "left" ? "right" : "left"]: 32,
+        bottom: -12,
+        [side === "left" ? "right" : "left"]: 8,
         fontFamily: mono,
-        fontSize: 10,
-        color: "rgba(44,24,16,0.3)",
+        fontSize: 9,
+        fontWeight: 600,
+        color: "rgba(44,24,16,0.38)",
         letterSpacing: "0.08em",
+        zIndex: 40,
       }}
     >
       {String(n).padStart(2, "0")}

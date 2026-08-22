@@ -31,13 +31,6 @@ function LeftPage() {
           LetsUpgrade · Remote
         </div>
 
-        {/* Summary */}
-        <p style={{ fontSize: 11, lineHeight: 1.65, color: ink, marginBottom: 10, marginTop: 0 }}>
-          Supported day-to-day operational workflows involving process automation,
-          large-scale data handling, reporting, and communication. Built n8n automations
-          to reduce repetitive manual work, processed and validated large datasets,
-          and helped coordinate information across teams and channels.
-        </p>
 
         {/* Responsibilities */}
         <div style={{ display: "flex", flexDirection: "column" as const, gap: 4, marginBottom: 10 }}>

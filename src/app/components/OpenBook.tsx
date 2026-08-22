@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft, ChevronRight, X, BookOpen } from "lucide-react";
 import { SpreadContent } from "./SpreadContent";
 import { playRandomPageTurnSound } from "../utils/pageTurnSound";
+import { GlassButton } from "@/components/ui/glass-button";
 import spiralSrc from "../../../3dAssets/Spiral2.png";
 
 const TOTAL_SPREADS = 10;
@@ -11,9 +12,9 @@ const SPREAD_TITLES = [
   "Introduction",
   "About Me",
   "Skills",
-  "StockSync",
   "Converge",
   "CoWriter",
+  "StockSync",
   "Interactive & Game Dev",
   "Experience & Education",
   "Hackathons & Portfolio",
@@ -40,7 +41,13 @@ export function OpenBook({ onClose }: Props) {
   const [isFlipping, setIsFlipping] = useState(false);
   const [flipState, setFlipState] = useState<FlipState | null>(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [mobilePage, setMobilePage] = useState(0); // 0 = left of spread 0, etc.
+  const [mobilePage, setMobilePage] = useState(0);
+
+  // Queue for variable page flipping
+  const flipQueueRef = useRef<{ direction: "fwd" | "bwd"; count: number }>({
+    direction: "fwd",
+    count: 0,
+  });
 
   // Touch tracking
   const touchStartX = useRef(0);
@@ -93,6 +100,43 @@ export function OpenBook({ onClose }: Props) {
     setRightSpread(newIndex);
     setIsFlipping(false);
     setFlipState(null);
+
+    // Check if there are more queued page flips from variable scroll
+    if (flipQueueRef.current.count > 0) {
+      const { direction } = flipQueueRef.current;
+      flipQueueRef.current.count -= 1;
+      setTimeout(() => {
+        if (direction === "fwd" && newIndex < TOTAL_SPREADS - 1) {
+          playRandomPageTurnSound();
+          const next = newIndex + 1;
+          setRightSpread(next);
+          setFlipState({
+            direction: "fwd",
+            frontSpread: newIndex,
+            frontSide: "right",
+            backSpread: next,
+            backSide: "left",
+            flipperSide: "right",
+          });
+          setIsFlipping(true);
+        } else if (direction === "bwd" && newIndex > 0) {
+          playRandomPageTurnSound();
+          const prev = newIndex - 1;
+          setLeftSpread(prev);
+          setFlipState({
+            direction: "bwd",
+            frontSpread: newIndex,
+            frontSide: "left",
+            backSpread: prev,
+            backSide: "right",
+            flipperSide: "left",
+          });
+          setIsFlipping(true);
+        } else {
+          flipQueueRef.current.count = 0;
+        }
+      }, 50);
+    }
   }, [flipState, spreadIndex]);
 
   // Mobile page navigation
@@ -112,7 +156,7 @@ export function OpenBook({ onClose }: Props) {
     }
   }, [mobilePage]);
 
-  // Keyboard
+  // Keyboard navigation
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === "ArrowDown") {
@@ -129,7 +173,122 @@ export function OpenBook({ onClose }: Props) {
     return () => window.removeEventListener("keydown", handler);
   }, [flipForward, flipBackward, mobileNext, mobilePrev, onClose, isMobile]);
 
-  // Touch
+  // Wheel / Trackpad scroll navigation with Variable Page-Turning based on intensity
+  const accumulatedDeltaRef = useRef(0);
+  const scrollLockRef = useRef(false);
+  const wheelDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const spreadIndexRef = useRef(spreadIndex);
+  spreadIndexRef.current = spreadIndex;
+  const isFlippingRef = useRef(isFlipping);
+  isFlippingRef.current = isFlipping;
+  const isMobileRef = useRef(isMobile);
+  isMobileRef.current = isMobile;
+  const mobilePageRef = useRef(mobilePage);
+  mobilePageRef.current = mobilePage;
+  const flipForwardRef = useRef(flipForward);
+  flipForwardRef.current = flipForward;
+  const flipBackwardRef = useRef(flipBackward);
+  flipBackwardRef.current = flipBackward;
+  const mobileNextRef = useRef(mobileNext);
+  mobileNextRef.current = mobileNext;
+  const mobilePrevRef = useRef(mobilePrev);
+  mobilePrevRef.current = mobilePrev;
+
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      const isMobileVal = isMobileRef.current;
+      const currentSpread = spreadIndexRef.current;
+      const currentMobilePage = mobilePageRef.current;
+      const flipping = isFlippingRef.current;
+
+      const canGoForward = isMobileVal
+        ? currentMobilePage < mobilePageCount - 1
+        : currentSpread < TOTAL_SPREADS - 1 && !flipping;
+
+      const canGoBackward = isMobileVal
+        ? currentMobilePage > 0
+        : currentSpread > 0 && !flipping;
+
+      const isDown = e.deltaY > 0;
+      const isUp = e.deltaY < 0;
+
+      if ((isDown && canGoForward) || (isUp && canGoBackward)) {
+        e.preventDefault();
+      } else {
+        accumulatedDeltaRef.current = 0;
+        return;
+      }
+
+      if (wheelDebounceTimerRef.current) {
+        clearTimeout(wheelDebounceTimerRef.current);
+      }
+      wheelDebounceTimerRef.current = setTimeout(() => {
+        accumulatedDeltaRef.current = 0;
+        scrollLockRef.current = false;
+      }, 220);
+
+      if (scrollLockRef.current || flipping) {
+        return;
+      }
+
+      if (
+        (accumulatedDeltaRef.current > 0 && e.deltaY < 0) ||
+        (accumulatedDeltaRef.current < 0 && e.deltaY > 0)
+      ) {
+        accumulatedDeltaRef.current = 0;
+      }
+
+      accumulatedDeltaRef.current += e.deltaY;
+      const absDelta = Math.abs(accumulatedDeltaRef.current);
+      const THRESHOLD = 50;
+
+      if (absDelta >= THRESHOLD) {
+        scrollLockRef.current = true;
+
+        // Calculate variable page count based on scroll gesture intensity
+        // Soft (<130): 1 page, Medium (130-260): 2 pages, Hard (>260): 3 pages
+        let pagesToTurn = 1;
+        if (absDelta >= 260) {
+          pagesToTurn = 3;
+        } else if (absDelta >= 130) {
+          pagesToTurn = 2;
+        }
+
+        accumulatedDeltaRef.current = 0;
+
+        if (isDown && canGoForward) {
+          if (isMobileVal) {
+            for (let i = 0; i < pagesToTurn; i++) {
+              setTimeout(() => mobileNextRef.current(), i * 180);
+            }
+          } else {
+            flipQueueRef.current = { direction: "fwd", count: pagesToTurn - 1 };
+            flipForwardRef.current();
+          }
+        } else if (isUp && canGoBackward) {
+          if (isMobileVal) {
+            for (let i = 0; i < pagesToTurn; i++) {
+              setTimeout(() => mobilePrevRef.current(), i * 180);
+            }
+          } else {
+            flipQueueRef.current = { direction: "bwd", count: pagesToTurn - 1 };
+            flipBackwardRef.current();
+          }
+        }
+      }
+    };
+
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      window.removeEventListener("wheel", handleWheel);
+      if (wheelDebounceTimerRef.current) {
+        clearTimeout(wheelDebounceTimerRef.current);
+      }
+    };
+  }, [mobilePageCount]);
+
+  // Touch handlers for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
@@ -139,17 +298,11 @@ export function OpenBook({ onClose }: Props) {
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     const dy = e.changedTouches[0].clientY - touchStartY.current;
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-      if (dx < 0) {
-        if (isMobile) mobileNext();
-        else flipForward();
-      } else {
-        if (isMobile) mobilePrev();
-        else flipBackward();
-      }
+      if (dx < 0) mobileNext();
+      else mobilePrev();
     }
   };
 
-  // Mobile spread/side from mobilePage
   const mobileSpread = Math.floor(mobilePage / 2);
   const mobileSide: "left" | "right" = mobilePage % 2 === 0 ? "left" : "right";
 
@@ -166,20 +319,18 @@ export function OpenBook({ onClose }: Props) {
         {/* Mobile book page */}
         <div className="relative flex flex-col" style={{ width: "min(95vw, 400px)", height: "min(78vh, 560px)" }}>
           {/* Close button */}
-          <button
+          <GlassButton
+            size="sm"
             onClick={onClose}
-            className="absolute -top-10 right-0 flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity"
+            className="absolute -top-10 right-0 text-[#2c1810]"
+            contentClassName="gap-1"
             style={{
               fontFamily: "Lato, sans-serif",
               fontSize: 12,
-              color: "#2c1810",
-              border: "1px solid rgba(44,24,16,0.22)",
-              borderRadius: 3,
-              padding: "4px 8px",
             }}
           >
             <X size={14} /> Close
-          </button>
+          </GlassButton>
 
           <AnimatePresence mode="wait">
             <motion.div
@@ -218,20 +369,20 @@ export function OpenBook({ onClose }: Props) {
               {String(mobilePage + 1).padStart(2, "0")} / {String(mobilePageCount).padStart(2, "0")}
             </span>
 
-            <button
+            <GlassButton
+              size="sm"
               onClick={mobileNext}
               disabled={mobilePage >= mobilePageCount - 1}
-              className="flex items-center gap-1 text-sm disabled:opacity-30 hover:opacity-70 transition-opacity"
+              className="text-[#2c1810]"
+              contentClassName="gap-1"
               style={{
                 fontFamily: "Lato, sans-serif",
-                color: "#2c1810",
-                border: "1px solid rgba(44,24,16,0.22)",
-                borderRadius: 3,
-                padding: "4px 8px",
+                fontSize: 12,
               }}
             >
-              Next <ChevronRight size={16} />
-            </button>
+              <span>Next</span>
+              <ChevronRight size={16} />
+            </GlassButton>
           </div>
         </div>
       </div>
@@ -243,10 +394,10 @@ export function OpenBook({ onClose }: Props) {
       className="flex flex-col items-center justify-center gap-4 select-none"
       style={{ width: "100%", height: "100%" }}
     >
-      {/* ── Top bar: close button ── */}
+      {/* ── Top bar: branding and close button ── */}
       <div
         className="flex items-center justify-between"
-        style={{ width: "min(92vw, 1080px)" }}
+        style={{ width: "min(92vw, 1160px)" }}
       >
         <div className="flex items-center gap-2">
           <BookOpen size={14} color="#c9863a" />
@@ -263,22 +414,20 @@ export function OpenBook({ onClose }: Props) {
           </span>
         </div>
 
-        <button
+        <GlassButton
+          size="sm"
           onClick={onClose}
-          className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity"
+          className="text-[#2c1810]"
+          contentClassName="gap-1.5"
           style={{
             fontFamily: "Lato, sans-serif",
             fontSize: 12,
-            color: "#2c1810",
             letterSpacing: "0.06em",
-            border: "1px solid rgba(44,24,16,0.22)",
-            borderRadius: 3,
-            padding: "4px 8px",
           }}
         >
           <X size={14} />
           Close book
-        </button>
+        </GlassButton>
       </div>
 
       {/* ── Main book container (spread view) ── */}
@@ -335,7 +484,7 @@ export function OpenBook({ onClose }: Props) {
               zIndex: 10,
             }}
           />
-          {/* Page margin guide line (blueprint feel) */}
+          {/* Page margin guide line */}
           <div
             className="absolute top-0 bottom-0 pointer-events-none"
             style={{
@@ -513,33 +662,28 @@ export function OpenBook({ onClose }: Props) {
             )}
           </>
         )}
-        {/* ── Spiral PNG binding — absolute, z-index 15, centered on the book spine ──
-             Positioned directly in the book container (position:relative, explicit height)
-             so height:100% resolves correctly. z-index 15 > pages (2) = always visible.
-             width:auto keeps the 200×1204 aspect ratio intact (no distortion/cropping).
-             CSS mask fades ring tails so they appear to tuck behind each page edge.      */}
+
+        {/* ── Spiral PNG binding — centered over spine ── */}
         <img
           src={spiralSrc}
           alt=""
           draggable={false}
           style={{
-            position:      "absolute",
-            top:           0,
-            left:          "50%",
-            transform:     "translateX(-50%)",
-            height:        "100%",
-            width:         "auto",
-            zIndex:        15,
+            position: "absolute",
+            top: 0,
+            left: "50%",
+            transform: "translateX(-50%)",
+            height: "100%",
+            width: "auto",
+            zIndex: 15,
             pointerEvents: "none",
-            userSelect:    "none",
-            display:       "block",
-            /* Fade ring tails so they merge into the page edges */
+            userSelect: "none",
+            display: "block",
             WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)",
-            maskImage:       "linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)",
+            maskImage: "linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)",
           }}
         />
       </div>
-
 
       {/* ── Navigation bar ── */}
       <div
@@ -609,28 +753,26 @@ export function OpenBook({ onClose }: Props) {
         </div>
 
         {/* Next button */}
-        <button
+        <GlassButton
+          size="sm"
           onClick={flipForward}
           disabled={spreadIndex >= TOTAL_SPREADS - 1 || isFlipping}
-          className="flex items-center gap-2 disabled:opacity-25 hover:opacity-70 transition-opacity"
+          className="text-[#2c1810]"
+          contentClassName="gap-1.5"
           style={{
             fontFamily: "Lato, sans-serif",
             fontSize: 12,
-            color: "#2c1810",
             letterSpacing: "0.06em",
-            border: "1px solid rgba(44,24,16,0.22)",
-            borderRadius: 3,
-            padding: "4px 8px",
           }}
         >
-          Next
+          <span>Next</span>
           <ChevronRight size={16} />
-        </button>
+        </GlassButton>
       </div>
 
-      {/* Keyboard hint */}
+      {/* Navigation hint */}
       <p style={{ fontFamily: "Lato, sans-serif", fontSize: 10, color: "rgba(44,24,16,0.3)", letterSpacing: "0.08em" }}>
-        Use ← → arrow keys or click page edges to flip
+        Use scroll, ← → arrow keys, or click page edges to flip
       </p>
     </div>
   );
