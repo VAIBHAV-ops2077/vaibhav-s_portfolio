@@ -553,17 +553,14 @@ export function OpenBook({ onClose }: Props) {
         {isFlipping && flipState && (
           <motion.div
             key={`flipper-${flipState.direction}-${flipState.frontSpread}`}
-            className="absolute top-0 bottom-0 overflow-hidden"
+            className="absolute top-0 bottom-0 pointer-events-none"
             style={{
               width: "50%",
               [flipState.flipperSide === "right" ? "right" : "left"]: 0,
               transformOrigin: flipState.flipperSide === "right" ? "left center" : "right center",
               transformStyle: "preserve-3d",
+              WebkitTransformStyle: "preserve-3d",
               zIndex: 20,
-              boxShadow:
-                flipState.direction === "fwd"
-                  ? "-8px 0 32px rgba(0,0,0,0.25)"
-                  : "8px 0 32px rgba(0,0,0,0.25)",
             }}
             initial={{ rotateY: 0 }}
             animate={{ rotateY: flipState.direction === "fwd" ? -180 : 180 }}
@@ -576,7 +573,19 @@ export function OpenBook({ onClose }: Props) {
               style={{
                 backfaceVisibility: "hidden",
                 WebkitBackfaceVisibility: "hidden",
+                transform: "rotateY(0deg) translateZ(0.5px)",
+                transformStyle: "preserve-3d",
+                WebkitTransformStyle: "preserve-3d",
                 background: flipState.flipperSide === "right" ? "#f5f1e8" : "#faf6f0",
+                borderRadius: flipState.flipperSide === "right" ? "0 4px 4px 0" : "4px 0 0 4px",
+                borderRight: flipState.flipperSide === "right" ? "2px solid rgba(201,134,58,0.4)" : "none",
+                borderLeft: flipState.flipperSide === "left" ? "2px solid rgba(201,134,58,0.4)" : "none",
+                borderTop: "1px solid rgba(201,134,58,0.25)",
+                borderBottom: "1px solid rgba(201,134,58,0.25)",
+                boxShadow:
+                  flipState.flipperSide === "right"
+                    ? "6px 0 24px rgba(0,0,0,0.18), 1px 0 4px rgba(0,0,0,0.1), inset 20px 0 30px rgba(44,24,16,0.06)"
+                    : "-6px 0 24px rgba(0,0,0,0.18), -1px 0 4px rgba(0,0,0,0.1), inset -20px 0 30px rgba(44,24,16,0.06)",
                 backgroundImage:
                   "repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(100,80,60,0.05) 28px)",
                 backgroundPosition: "0 8px",
@@ -606,8 +615,19 @@ export function OpenBook({ onClose }: Props) {
               style={{
                 backfaceVisibility: "hidden",
                 WebkitBackfaceVisibility: "hidden",
-                transform: "rotateY(180deg)",
+                transform: "rotateY(180deg) translateZ(0.5px)",
+                transformStyle: "preserve-3d",
+                WebkitTransformStyle: "preserve-3d",
                 background: flipState.flipperSide === "right" ? "#faf6f0" : "#f5f1e8",
+                borderRadius: flipState.flipperSide === "right" ? "4px 0 0 4px" : "0 4px 4px 0",
+                borderLeft: flipState.flipperSide === "right" ? "2px solid rgba(201,134,58,0.4)" : "none",
+                borderRight: flipState.flipperSide === "left" ? "2px solid rgba(201,134,58,0.4)" : "none",
+                borderTop: "1px solid rgba(201,134,58,0.25)",
+                borderBottom: "1px solid rgba(201,134,58,0.25)",
+                boxShadow:
+                  flipState.flipperSide === "right"
+                    ? "-6px 0 24px rgba(0,0,0,0.18), -1px 0 4px rgba(0,0,0,0.1), inset -20px 0 30px rgba(44,24,16,0.06)"
+                    : "6px 0 24px rgba(0,0,0,0.18), 1px 0 4px rgba(0,0,0,0.1), inset 20px 0 30px rgba(44,24,16,0.06)",
                 backgroundImage:
                   "repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(100,80,60,0.05) 28px)",
                 backgroundPosition: "0 8px",
