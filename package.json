@@ -68,6 +68,7 @@
     "tailwind-merge": "3.2.0",
     "three": "^0.169.0",
     "tw-animate-css": "1.3.8",
+    "vara": "^1.4.1",
     "vaul": "1.1.2"
   },
   "devDependencies": {

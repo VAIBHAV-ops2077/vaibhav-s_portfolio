@@ -4,10 +4,13 @@ import { ClosedBook } from "./components/ClosedBook";
 import { OpenBook } from "./components/OpenBook";
 import { DecorativeObjects } from "./components/DecorativeObjects";
 import type { BookPhase } from "./components/DecorativeObjects";
+import { LoadingScreen } from "./components/loader/LoadingScreen";
 import backgroundImg from "../assets/background.png";
 
 export default function App() {
   const [phase, setPhase] = useState<BookPhase>("closed");
+  // Loading screen — true until all assets have loaded and the exit animation completes
+  const [showLoader, setShowLoader] = useState(true);
 
   // Derive the book stage that controls which component is rendered.
   const stage = phase === "open" || phase === "closing" ? "open" : "closed";
@@ -60,6 +63,8 @@ export default function App() {
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
       }}
+      // Prevent interaction with the portfolio while the loader is active
+      aria-busy={showLoader}
     >
       {/* Vignette — darkened corners */}
       <div
@@ -110,6 +115,11 @@ export default function App() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* ── Loading screen — top-level overlay, z-index 9999 ── */}
+      {showLoader && (
+        <LoadingScreen onComplete={() => setShowLoader(false)} />
+      )}
     </div>
   );
 }
