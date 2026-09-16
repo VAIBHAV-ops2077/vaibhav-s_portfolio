@@ -3,7 +3,7 @@
 LiveLink - https://vaibhav-works.vercel.app
 
 An interactive portfolio presented as a vintage, spiral-bound engineering notebook. The experience turns Vaibhav's projects, skills, experience, and achievements into a tactile 20-page book that can be opened and navigated like a real journal.
-# 📖 Vaibhav Kawde — 3D Interactive Portfolio
+# 📖 Vaibhav Kawde —  Interactive Portfolio
 
 > An interactive, vintage engineering & explorer scrapbook notebook portfolio showcasing projects, technical depth, and craft across frontend, backend, cloud, DevOps, and AI.
 
